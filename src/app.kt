@@ -38,7 +38,8 @@ class ExpLess(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
 // Functions
 
 class ExpApply(val e1: Expression, val e2: Expression) : Expression()
-class ExpLambda(val f: (Expression) -> Expression) : Expression()
+class ExpLambda(val function: (Expression) -> Expression) : Expression()
+class ExpFunction(val function: Expression, val scope: (Expression) -> Expression) : Expression()
 
 // Lists
 
@@ -61,14 +62,19 @@ fun ExpEval(exp: Expression): Expression {
     // Functions
         is ExpLambda -> exp
         is ExpApply -> {
-            val function = ExpEval(exp.e1)
-            if (function is ExpLambda) {
+            val lambda = ExpEval(exp.e1)
+            if (lambda is ExpLambda) {
                 val functionArgument = ExpEval(exp.e2)
-                return ExpEval(function.f(functionArgument))
+                return ExpEval(lambda.function(functionArgument))
             } else {
                 throw Exception("The operation 'Apply' was performed on a non-lambda expression")
             }
         }
+        is ExpFunction -> {
+            val function = ExpEval(exp.function)
+            return ExpEval(exp.scope(function))
+        }
+
 
     // Exceptions
         is ExpTry -> {
@@ -198,89 +204,90 @@ fun main(args: Array<String>) {
 
     // Examples:
     // (10+10) == 20
-    println(
-            ExpEval(
-                    ExpEqual(
-                            ExpOpAdd(
-                                    ExpNumber(10),
-                                    ExpNumber(10)
-                            ),
-                            ExpNumber(20)
-                    )
+    println(ExpEval(
+            ExpEqual(
+                    ExpOpAdd(
+                            ExpNumber(10),
+                            ExpNumber(10)
+                    ),
+                    ExpNumber(20)
             )
-    )
+    ))
 
     // if (2 < 0) then 42 else 0
-    println(
-            ExpEval(
-                    ExpIf(
-                            ExpLess(ExpNumber(2), ExpNumber(0)),
-                            ExpNumber(42),
-                            ExpNumber(0)
-                    )
+    println(ExpEval(
+            ExpIf(
+                    ExpLess(ExpNumber(2), ExpNumber(0)),
+                    ExpNumber(42),
+                    ExpNumber(0)
             )
-    )
+    ))
 
     // isEmpty([nil])
-    println(
-            ExpEval(
-                    ExpIsEmpty(ExpNil())
-            )
-    )
+    println(ExpEval(
+            ExpIsEmpty(ExpNil())
+    ))
 
     // isEmpty([0::nil])
-    println(
-            ExpEval(
-                    ExpIsEmpty(
-                            ExpConcat(
-                                    ExpNumber(0),
-                                    ExpNil()
-                            )
+    println(ExpEval(
+            ExpIsEmpty(
+                    ExpConcat(
+                            ExpNumber(0),
+                            ExpNil()
                     )
             )
-    )
+    ))
 
     // hd(tl([0::(1::nil)]))
-    println(
-            ExpEval(
-                    ExpHead(
-                            ExpTail(
-                                    ExpConcat(ExpNumber(0), ExpConcat(ExpNumber(1), ExpNil()))
-                            )
+    println(ExpEval(
+            ExpHead(
+                    ExpTail(
+                            ExpConcat(ExpNumber(0), ExpConcat(ExpNumber(1), ExpNil()))
                     )
             )
-    )
+    ))
 
     // try raise with true
-    println(
-            ExpEval(
-                    ExpTry(ExpRaise(), ExpBool(true))
-            )
-    )
+    println(ExpEval(
+            ExpTry(ExpRaise(), ExpBool(true))
+    ))
 
     // try (if (true) then (raise) else (false)) with false
-    println(
-            ExpEval(
-                    ExpTry(
-                            ExpIf(
-                                    ExpBool(true),
-                                    ExpRaise(),
-                                    ExpBool(false)
-                            ),
-                            ExpBool(true)
-                    )
+    println(ExpEval(
+            ExpTry(
+                    ExpIf(
+                            ExpBool(true),
+                            ExpRaise(),
+                            ExpBool(false)
+                    ),
+                    ExpBool(true)
             )
-    )
+    ))
 
     // (fn x : Int -> x + 1)(10)
-    println(
-            ExpEval(
-                    ExpApply(
-                            ExpLambda({ x ->
-                                ExpOpAdd(
-                                        ExpNumber(1),
-                                        x
-                                )
-                            }), ExpNumber(1))
-            ))
+    println(ExpEval(
+            ExpApply(
+                    ExpLambda({ x ->
+                        ExpOpAdd(
+                                ExpNumber(1),
+                                x
+                        )
+                    }), ExpNumber(1))
+    ))
+
+    // let inc = (fn x -> x + 1) in inc(1)
+    println(ExpEval(
+            ExpFunction(
+                    // let function
+                    ExpLambda({ x ->
+                        ExpOpAdd(
+                                ExpNumber(1),
+                                x
+                        )
+                    }),
+                    // 'inc' in ...
+                    ({ inc ->
+                        ExpApply(inc, ExpNumber(1))
+                    }))
+    ))
 }
