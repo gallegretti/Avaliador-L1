@@ -1,5 +1,7 @@
 open class Expression
 
+// Values
+
 class ExpNumber(val n: Int) : Expression() {
     override fun toString(): String {
         return n.toString()
@@ -12,12 +14,18 @@ class ExpBool(val b: Boolean) : Expression() {
     }
 }
 
+// Conditional
+
 class ExpIf(val e1: Expression, val e2: Expression, val e3: Expression) : Expression()
+
+// Arithmetic Ops
 
 open class ExpArithmeticOp(val e1: Expression, val e2: Expression) : Expression()
 class ExpOpAdd(e1: Expression, e2: Expression) : ExpArithmeticOp(e1, e2)
 class ExpOpSub(e1: Expression, e2: Expression) : ExpArithmeticOp(e1, e2)
 class ExpOpMult(e1: Expression, e2: Expression) : ExpArithmeticOp(e1, e2)
+
+// Logic Ops
 
 open class ExpLogicOp(val e1: Expression, val e2: Expression) : Expression()
 class ExpGreater(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
@@ -26,6 +34,11 @@ class ExpEqual(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
 class ExpNotEqual(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
 class ExpLessOrEqual(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
 class ExpLess(e1: Expression, e2: Expression) : ExpLogicOp(e1, e2)
+
+// Functions
+
+class ExpApply(val e1: Expression, val e2: Expression) : Expression()
+class ExpLambda(val f: (Expression) -> Expression) : Expression()
 
 // Lists
 
@@ -44,6 +57,18 @@ class ExpRaise() : Expression()
 
 fun ExpEval(exp: Expression): Expression {
     return when (exp) {
+
+    // Functions
+        is ExpLambda -> exp
+        is ExpApply -> {
+            val function = ExpEval(exp.e1)
+            if (function is ExpLambda) {
+                val functionArgument = ExpEval(exp.e2)
+                return ExpEval(function.f(functionArgument))
+            } else {
+                throw Exception("The operation 'Apply' was performed on a non-lambda expression")
+            }
+        }
 
     // Exceptions
         is ExpTry -> {
@@ -172,7 +197,6 @@ fun main(args: Array<String>) {
 
 
     // Examples:
-
     // (10+10) == 20
     println(
             ExpEval(
@@ -247,4 +271,16 @@ fun main(args: Array<String>) {
                     )
             )
     )
+
+    // (fn x : Int -> x + 1)(10)
+    println(
+            ExpEval(
+                    ExpApply(
+                            ExpLambda({ x ->
+                                ExpOpAdd(
+                                        ExpNumber(1),
+                                        x
+                                )
+                            }), ExpNumber(1))
+            ))
 }
