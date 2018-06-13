@@ -1,4 +1,3 @@
-
 open class Expression
 
 class ExpNumber(val n: Int) : Expression() {
@@ -37,9 +36,25 @@ class ExpHead(val e1: Expression) : Expression()
 class ExpTail(val e1: Expression) : Expression()
 class ExpIsEmpty(val e1: Expression) : Expression()
 
+// Exceptions
+
+class ExpTry(val _try: Expression, val with: Expression) : Expression()
+class ExpRaise() : Expression()
+
 
 fun ExpEval(exp: Expression): Expression {
     return when (exp) {
+
+    // Exceptions
+        is ExpTry -> {
+            val block = ExpEval(exp._try)
+            return when (block) {
+                is ExpRaise -> ExpEval(exp.with)
+                else -> block
+            }
+        }
+        is ExpRaise -> exp
+
 
     // Is value
         is ExpBool -> exp
@@ -212,4 +227,24 @@ fun main(args: Array<String>) {
             )
     )
 
+    // try raise with true
+    println(
+            ExpEval(
+                    ExpTry(ExpRaise(), ExpBool(true))
+            )
+    )
+
+    // try (if (true) then (raise) else (false)) with false
+    println(
+            ExpEval(
+                    ExpTry(
+                            ExpIf(
+                                    ExpBool(true),
+                                    ExpRaise(),
+                                    ExpBool(false)
+                            ),
+                            ExpBool(true)
+                    )
+            )
+    )
 }
