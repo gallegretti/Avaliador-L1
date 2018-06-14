@@ -43,7 +43,12 @@ class ExpFunction(val function: Expression, val scope: (Expression) -> Expressio
 
 // Lists
 
-class ExpNil() : Expression()
+class ExpNil() : Expression() {
+    override fun toString(): String {
+        return "nil"
+    }
+}
+
 class ExpList(val list: MutableList<Expression>) : Expression()
 class ExpConcat(val e1: Expression, val e2: Expression) : Expression()
 class ExpHead(val e1: Expression) : Expression()
@@ -53,7 +58,11 @@ class ExpIsEmpty(val e1: Expression) : Expression()
 // Exceptions
 
 class ExpTry(val _try: Expression, val with: Expression) : Expression()
-class ExpRaise() : Expression()
+class ExpRaise() : Expression() {
+    override fun toString(): String {
+        return "raise"
+    }
+}
 
 
 fun ExpEval(exp: Expression): Expression {
@@ -135,7 +144,7 @@ fun ExpEval(exp: Expression): Expression {
             val lhs = ExpEval(exp.e1)
             val rhs = ExpEval(exp.e2)
             if (rhs is ExpList) {
-                rhs.list.add(lhs)
+                rhs.list.add(0, lhs)
                 return ExpList(rhs.list)
             } else {
                 throw Exception("The operation 'Concat' was performed on a non-list expression")
@@ -143,26 +152,27 @@ fun ExpEval(exp: Expression): Expression {
         }
         is ExpHead -> {
             val l = ExpEval(exp.e1)
-            if (l is ExpList) {
-                if (l.list.isNotEmpty()) {
-                    return ExpEval(l.list[0])
+            when (l) {
+                is ExpList -> return if (l.list.isNotEmpty()) {
+                    ExpEval(l.list[0])
                 } else {
-                    throw Exception("The operation 'Head' was performed on an empty list")
+                    ExpRaise()
                 }
-            } else {
-                throw Exception("The operation 'Head' was performed on a non-list expression")
+                is ExpRaise -> ExpRaise()
+                else -> throw Exception("The operation 'Head' was performed on a non-list expression")
             }
+
         }
         is ExpTail -> {
             val l = ExpEval(exp.e1)
-            if (l is ExpList) {
-                if (l.list.isNotEmpty()) {
-                    return ExpList(l.list.drop(0).toMutableList())
+            when (l) {
+                is ExpList -> return if (l.list.isNotEmpty()) {
+                    ExpList(l.list.drop(1).toMutableList())
                 } else {
-                    throw Exception("The operation 'Tail' was performed on an empty list")
+                    ExpRaise()
                 }
-            } else {
-                throw Exception("The operation 'Tail' was performed on a non-list expression")
+                is ExpRaise -> ExpRaise()
+                else -> throw Exception("The operation 'Tail' was performed on a non-list expression")
             }
         }
         is ExpIsEmpty -> {
@@ -183,6 +193,8 @@ fun auxDoArithmeticOp(exp: ExpArithmeticOp, f: (Int, Int) -> Int, name: String):
     val rhs = ExpEval(exp.e2)
     if (lhs is ExpNumber && rhs is ExpNumber) {
         return ExpNumber(f(lhs.n, rhs.n))
+    } else if (lhs is ExpRaise || rhs is ExpRaise) {
+        return ExpRaise()
     } else {
         throw Exception("The operation '$name' was performed on non-numeric expressions")
     }
@@ -193,6 +205,8 @@ fun auxDoLogicOp(exp: ExpLogicOp, f: (Int, Int) -> Boolean, name: String): Expre
     val rhs = ExpEval(exp.e2)
     if (lhs is ExpNumber && rhs is ExpNumber) {
         return ExpBool(f(lhs.n, rhs.n))
+    } else if (lhs is ExpRaise || rhs is ExpRaise) {
+        return ExpRaise()
     } else {
         throw Exception("The operation '$name' was performed on non-numeric expressions")
     }
@@ -200,7 +214,6 @@ fun auxDoLogicOp(exp: ExpLogicOp, f: (Int, Int) -> Boolean, name: String): Expre
 
 
 fun main(args: Array<String>) {
-
 
     // Examples:
     // (10+10) == 20
@@ -262,6 +275,19 @@ fun main(args: Array<String>) {
                     ),
                     ExpBool(true)
             )
+    ))
+
+    // try (if(true) then (hd(nil)) else nil) with 0
+    println(ExpEval(
+            ExpTry(
+                    ExpIf(ExpBool(true), ExpHead(ExpNil()), ExpNil()),
+                    ExpNumber(0)
+            )
+    ))
+
+    // 1 + hd(hd(1::nil))
+    println(ExpEval(
+            ExpOpAdd(ExpNumber(1), ExpTail(ExpTail(ExpConcat(ExpNumber(1), ExpNil()))))
     ))
 
     // (fn x : Int -> x + 1)(10)
