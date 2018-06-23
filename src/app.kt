@@ -91,12 +91,12 @@ fun ExpEval(exp: Expression): Expression {
                 function.body.environment = exp.environment
                 function.environment[function.parameterName] = ExpEval(exp.e2)
                 return ExpEval(function.body)
-            }/*
+            }
             if (function is ExpLambda) {
                 function.body.environment = exp.environment
                 function.environment[function.parameterName] = ExpEval(exp.e2)
                 return ExpEval(function.body)
-            }*/
+            }
             if (function is ExpFunction) {
                 function.body.environment = exp.environment
                 function.body.environment[function.parameterName] = ExpEval(exp.e2)
