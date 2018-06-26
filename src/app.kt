@@ -220,10 +220,10 @@ fun ExpEval(exp: Expression): Expression {
         is ExpIsEmpty -> {
             exp.e1.environment = exp.environment
             val l = ExpEval(exp.e1)
-            if (l is ExpList) {
-                return ExpBool(l.list.isEmpty())
-            } else {
-                throw Exception("The operation 'IsEmpty' was performed on a non-list expression")
+            when (l) {
+                is ExpList -> return ExpBool(l.list.isEmpty())
+                is ExpRaise -> l
+                else -> throw Exception("The operation 'IsEmpty' was performed on a non-list expression")
             }
         }
 
