@@ -183,6 +183,9 @@ fun ExpEval(exp: Expression): Expression {
             exp.e2.environment = exp.environment
             val lhs = ExpEval(exp.e1)
             val rhs = ExpEval(exp.e2)
+            if (lhs is ExpRaise || rhs is ExpRaise) {
+                return ExpRaise()
+            }
             if (rhs is ExpList) {
                 rhs.list.add(0, lhs)
                 return ExpList(rhs.list)
